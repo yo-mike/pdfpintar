@@ -1,45 +1,57 @@
-version: "3"
+version: '3'
 services:
-  server:
-    restart: unless-stopped
+  laravel.test:
     build:
-      context: .
+      context: ./sail/runtimes/8.1
       dockerfile: Dockerfile
+      args:
+        WWWGROUP: '${WWWGROUP}'
+    image: sail-8.1/app
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     ports:
-      - "80:80"
-    depends_on:
-      - pgvector
+      - '${APP_PORT:-80}:80'
+      - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
     environment:
-      - AUTORUN_ENABLED=false
-      - SSL_MODE=off
-      - DB_HOST=pgvector
-      - DB_PORT=5432
-      - DB_DATABASE=homestead
-      - DB_USERNAME=homestead
-      - DB_PASSWORD=secret
-    env_file:
-      - .env
-    networks:
-      - web-dev
-
-  pgvector:
-    hostname: pgvector
-    restart: unless-stopped
-    platform: linux/x86_64
-    image: ankane/pgvector
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: homestead
-      POSTGRES_USER: homestead
-      POSTGRES_PASSWORD: secret
+      WWWUSER: '${WWWUSER}'
+      LARAVEL_SAIL: 1
+      XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+      XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+      IGNITION_LOCAL_SITES_PATH: '${PWD}'
     volumes:
-      - database:/var/lib/pgsql/data:rw
+      - '.:/var/www/html'
     networks:
-      - web-dev
-
+      - sail
+    depends_on:
+      - pgsql
+  pgsql:
+    image: 'ankane/pgvector:latest'
+    ports:
+      - '${FORWARD_DB_PORT:-5432}:5432'
+    environment:
+      PGPASSWORD: '${DB_PASSWORD:-secret}'
+      POSTGRES_DB: '${DB_DATABASE}'
+      POSTGRES_USER: '${DB_USERNAME}'
+      POSTGRES_PASSWORD: '${DB_PASSWORD:-secret}'
+    volumes:
+      - 'sail-pgsql:/var/lib/postgresql/data'
+      - './vendor/laravel/sail/database/pgsql/create-testing-database.sql:/docker-entrypoint-initdb.d/10-create-testing-database.sql'
+    networks:
+      - sail
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - '-q'
+        - '-d'
+        - '${DB_DATABASE}'
+        - '-U'
+        - '${DB_USERNAME}'
+      retries: 3
+      timeout: 5s
 networks:
-  web-dev:
-
+  sail:
+    driver: bridge
 volumes:
-  database:
+  sail-pgsql:
+    driver: local
