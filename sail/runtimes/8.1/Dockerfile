@@ -15,7 +15,6 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update \
     && apt-get install -y gnupg gosu curl ca-certificates zip unzip git supervisor sqlite3 libcap2-bin libpng-dev python2 dnsutils librsvg2-bin \
-    software-properties-common libfontconfig1-dev mupdf-tools gperf clang php8.1-dev build-essential autoconf unzip \
     && curl -sS 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x14aa40ec0831756756d7f66c4f4ea0aae5267a6c' | gpg --dearmor | tee /etc/apt/keyrings/ppa_ondrej_php.gpg > /dev/null \
     && echo "deb [signed-by=/etc/apt/keyrings/ppa_ondrej_php.gpg] https://ppa.launchpadcontent.net/ondrej/php/ubuntu jammy main" > /etc/apt/sources.list.d/ppa_ondrej_php.list \
     && apt-get update \
@@ -49,23 +48,9 @@ RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.1
 RUN groupadd --force -g $WWWGROUP sail
 RUN useradd -ms /bin/bash --no-user-group -g $WWWGROUP -u 1337 sail
 
-
-# Install Rust and Cargo
-RUN apt-get update && apt-get install -y cargo rustc \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Clone the php-pdf repo and build it
-RUN git clone https://github.com/ahmadrosid/php-pdf.git /tmp/php-pdf \
-    && cd /tmp/php-pdf \
-    && cargo build
-
-# Verify that the libphp_pdf.so file exists
-RUN if [ ! -f /tmp/php-pdf/target/debug/libphp_pdf.so ]; then exit 1; fi
-
-# Copy the .so file into the PHP extensions directory and update php.ini
-RUN cp /tmp/php-pdf/target/debug/libphp_pdf.so $(pecl config-get ext_dir)/libphp_pdf.so \
-    && echo "extension=$(pecl config-get ext_dir)/libphp_pdf.so" >> /etc/php/8.1/cli/php.ini
-
+# Using the pre-built PHP extension from the provided image
+COPY --from=ocittwo/php-pdf:latest /app/libphp_pdf.so /usr/lib/php/20210902/libphp_pdf.so
+RUN echo "extension=libphp_pdf.so" > /etc/php/8.1/cli/conf.d/php-pdf.ini
 
 
 COPY start-container /usr/local/bin/start-container

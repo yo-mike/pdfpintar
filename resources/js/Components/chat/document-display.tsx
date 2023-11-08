@@ -10,7 +10,7 @@ export const DocumentDisplay = React.memo(
         return (
             <>
                 <div className="max-h-[93vh]">
-                    <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.6.172/build/pdf.worker.min.js">
+                    <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
                         <Viewer
                             fileUrl={document.path}
                             plugins={[defaultLayoutPluginInstance]}

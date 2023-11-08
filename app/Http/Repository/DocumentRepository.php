@@ -9,7 +9,7 @@ use OpenAI\Laravel\Facades\OpenAI;
 class DocumentRepository
 {
     private string $chat_model = 'gpt-3.5-turbo-16k';
-    // private string $chat_model = 'gpt-4';
+//     private string $chat_model = 'gpt-4';
     private string $embedding_model = 'text-embedding-ada-002';
 
     public function getQueryEmbedding($question): array
@@ -29,9 +29,9 @@ class DocumentRepository
     public function findEmbedding($document_path, $query_embedding): array
     {
         $query = <<<EOT
-        SELECT embeddings.collection_id, embeddings.embedding, embeddings.document, embeddings.cmetadata, embeddings.custom_id, embeddings.uuid, embeddings.embedding <=> '%s'::vector AS distance 
-        FROM embeddings JOIN embedding_collections ON embeddings.collection_id = embedding_collections.uuid 
-        WHERE embeddings.collection_id = '{collection_id}'::UUID ORDER BY distance ASC 
+        SELECT embeddings.collection_id, embeddings.embedding, embeddings.document, embeddings.cmetadata, embeddings.custom_id, embeddings.uuid, embeddings.embedding <=> '%s'::vector AS distance
+        FROM embeddings JOIN embedding_collections ON embeddings.collection_id = embedding_collections.uuid
+        WHERE embeddings.collection_id = '{collection_id}'::UUID ORDER BY distance ASC
         LIMIT 4
         EOT;
 
@@ -64,10 +64,42 @@ class DocumentRepository
     public function askQuestionStreamed($context, $question)
     {
         $system_template = <<<EOT
-        Use the following pieces of context to answer the users question. 
+        Use the following pieces of context to answer the users question.
         If you don't know the answer, just say that you don't know, don't try to make up an answer.
         ----------------
         {context}
+        EOT;
+        $system_prompt = str_replace("{context}", $context, $system_template);
+
+        // Log::info($system_prompt);
+
+        return Openai::chat()->createStreamed([
+            'model' => $this->chat_model,
+            'temperature' => 0.7,
+            'messages' => [
+                ['role' => 'system', 'content' => $system_prompt],
+                ['role' => 'user', 'content' => $question],
+            ],
+        ]);
+    }
+
+    public function askQuestionSourceStreamed($context, $question)
+    {
+        $system_template = <<<EOT
+        You only speak using a markdown. The first four characters of your response MUST be "```\n"
+
+        Use the following context to answer the users question.
+
+        Your answer must match the text within context verbatim. Your answer will match sentence fragments, punctuation, and capitalization.
+        Your answer will only contain snippets from the context that are relevant to the question, and nothing more. The first four characters of your response MUST be "```\n"
+
+        ----------------
+        Context:
+
+        ```
+        {context}
+        ```
+
         EOT;
         $system_prompt = str_replace("{context}", $context, $system_template);
 

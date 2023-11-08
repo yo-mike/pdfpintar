@@ -21,6 +21,7 @@ Route::get('/privacy-policy', function () {
 });
 
 Route::get("/document/chat/streaming", [ChatController::class, "streaming"])->name("chat.streaming");
+Route::post("/document/chat/{chat}/sources", [ChatController::class, "sources"])->name("chat.sources");
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

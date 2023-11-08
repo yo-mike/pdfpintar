@@ -80,7 +80,7 @@ class ChatController extends Controller
 
         return response()->stream(
             function () use ($question, $embedding, $chat) {
-                $stream = $this->repository->askQuestionStreamed($embedding['context'], $question);
+                $stream = $this->repository->askQuestionSourceStreamed($embedding['context'], $question);
                 $result_text = "";
                 $metadata = [
                     'user_id' => $chat->user_id,
@@ -126,6 +126,21 @@ class ChatController extends Controller
                 'Content-Type' => 'text/event-stream',
             ]
         );
+    }
+
+    public function sources(Request $request, Chat $chat)
+    {
+        $question = $request->query('question');
+
+        $query_embedding =  $this->repository->getQueryEmbedding($question);
+        $embedding = $this->repository->findEmbedding($chat->document->path, $query_embedding);
+
+        return response()->stream(
+            function () use ($question, $embedding, $chat) {
+                $stream = $this->repository->askQuestionSourceStreamed($embedding['context'], $question);
+
+                // todo: ...
+            });
     }
 
     public function create(Request $request, Document $document)
